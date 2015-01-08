@@ -71,7 +71,9 @@ bool i2c_write(uint8_t reg, uint8_t *buf, int cnt)
     for(int i=0; i<cnt; i++){
         wiresend(buf[i]);
     }
-    return Wire.endTransmission();
+    int r= Wire.endTransmission();
+    if(r != 0){ Serial.print("i2c write error: "); Serial.println(r); }
+    return r == 0;
 }
 
 int i2c_read(uint8_t reg, uint8_t *buf, int cnt)
@@ -137,6 +139,7 @@ void load_fw(void)
 {
 	uint8_t buf[32];
 	size_t source_len = sizeof(gslx680_fw);
+	Serial.print("Firmware length: "); Serial.println(source_len);
 	int blockstart= 1;
 	int reg= 0;
 	int off= 0;
@@ -178,20 +181,27 @@ void startup_chip(void)
 void init_chip()
 {
 #if 1
-	digitalWrite(WAKE, 1);
+	Serial.println("Toggle Wake");
+	digitalWrite(WAKE, HIGH);
 	delay(20);
-	digitalWrite(WAKE, 0);
+	digitalWrite(WAKE, LOW);
 	delay(20);
-	digitalWrite(WAKE, 1);
+	digitalWrite(WAKE, HIGH);
 	delay(20);
 
 	// CTP startup sequence
+	Serial.println("clr reg");
 	clr_reg();
+	Serial.println("reset_chip");
 	reset_chip();
+	Serial.println("load_fw");
 	load_fw();
 //	startup_chip();
+	Serial.println("reset_chip2");
 	reset_chip();
+	Serial.println("startup_chip");
 	startup_chip();
+	Serial.println("init done");
 
 #else
 	// rastersoft int sequence
@@ -200,13 +210,13 @@ void init_chip()
 	startup_chip();
 	reset_chip();
 
-	digitalWrite(WAKE, 0);
+	digitalWrite(WAKE, LOW);
 	delay(50);
-	digitalWrite(WAKE, 1);
+	digitalWrite(WAKE, HIGH);
 	delay(30);
-	digitalWrite(WAKE, 0);
+	digitalWrite(WAKE, LOW);
 	delay(5);
-	digitalWrite(WAKE, 1);
+	digitalWrite(WAKE, HIGH);
 	delay(20);
 
 	reset_chip();
@@ -217,8 +227,10 @@ void init_chip()
 int read_data(void)
 {
 
+	Serial.println("reading data...");
 	uint8_t touch_data[24] = {0};
-	i2c_read(GSL_DATA_REG, touch_data, 24);
+	int n= i2c_read(GSL_DATA_REG, touch_data, 24);
+	Serial.print("read: "); Serial.println(n);
 
 	ts_event.n_fingers= touch_data[0];
 	for(int i=0; i<ts_event.n_fingers; i++){
@@ -232,13 +244,17 @@ int read_data(void)
 
 void setup() {
 	Serial.begin(9600);
+	Serial.println("Starting");
+	pinMode(WAKE, OUTPUT);
+	digitalWrite(WAKE, LOW);
+	pinMode(INTRPT, INPUT);
+	delay(100);
 	Wire.begin();
-	delay(5);
 	init_chip();
 }
 
 void loop() {
-	if(digitalRead(INTRPT) == 1) {
+	if(digitalRead(INTRPT) == HIGH) {
 		int n= read_data();
 		for(int i=0; i<n; i++){
 			Serial.print(ts_event.coords[i].finger); Serial.print(" "), Serial.print(ts_event.coords[i].x); Serial.print(" "), Serial.print(ts_event.coords[i].y);
