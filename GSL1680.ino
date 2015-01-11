@@ -13,19 +13,27 @@ pin | function  | Arduino Uno
 1   | SCL       | A5
 2   | SDA       | A4
 3   | VDD (3v3) | 3v3
-4   | Wake      | 4 (seems to be inverted SLEEP)
+4   | Wake      | 4
 5   | Int       | 2
 6   | Gnd       | gnd
 */
 #include <Wire.h>
 #include "Arduino.h"
 
+// set this for teensy3
+#define BIGFLASH
+
 // TODO define for other resolution
+#ifndef BIGFLASH
 #include "gslfw.h" // this is compacted format made by compress_data.c
+#else
+#include "gslX680firmware.h"
+#endif
 
 // Pins
 #define WAKE 4
 #define INTRPT 2
+#define LED 13
 
 #define SCREEN_MAX_X 		800
 #define SCREEN_MAX_Y 		480
@@ -47,6 +55,7 @@ struct _ts_event
 };
 
 struct _ts_event ts_event;
+bool led= false;
 
 static inline void wiresend(uint8_t x) {
 #if ARDUINO >= 100
@@ -66,13 +75,21 @@ static inline uint8_t wirerecv(void) {
 
 bool i2c_write(uint8_t reg, uint8_t *buf, int cnt)
 {
+	#if 0
+	Serial.print("i2c write: "); Serial.println(reg, HEX);
+	for(int i=0; i<cnt; i++){
+	    Serial.print(buf[i], HEX); Serial.print(",");
+	}
+	Serial.println();
+	#endif
+
 	Wire.beginTransmission(GSLX680_I2C_ADDR);
     wiresend(reg);
     for(int i=0; i<cnt; i++){
         wiresend(buf[i]);
     }
     int r= Wire.endTransmission();
-    if(r != 0){ Serial.print("i2c write error: "); Serial.println(r); }
+    if(r != 0){ Serial.print("i2c write error: "); Serial.print(r); Serial.print(" "); Serial.println(reg, HEX); }
     return r == 0;
 }
 
@@ -80,9 +97,11 @@ int i2c_read(uint8_t reg, uint8_t *buf, int cnt)
 {
 	Wire.beginTransmission(GSLX680_I2C_ADDR);
   	wiresend(reg);
-  	Wire.endTransmission();
+  	int r= Wire.endTransmission();
+	if(r != 0){ Serial.print("i2c read error: "); Serial.print(r); Serial.print(" "); Serial.println(reg, HEX); }
 
   	int n= Wire.requestFrom(GSLX680_I2C_ADDR, cnt);
+	if(n != cnt){ Serial.print("i2c read error: did not get expected count "); Serial.print(n); Serial.print(" - "); Serial.println(cnt); }
 
   	for(int i=0; i<n; i++){
   	    buf[i]= wirerecv();
@@ -90,26 +109,25 @@ int i2c_read(uint8_t reg, uint8_t *buf, int cnt)
   	return n;
 }
 
-// Note the CTP.h does this but rastersoft driver does not
 void clr_reg(void)
 {
 	uint8_t buf[4];
 
 	buf[0] = 0x88;
 	i2c_write(0xe0, buf, 1);
-	delayus(200);
+	delay(20);
 
 	buf[0] = 0x01;
 	i2c_write(0x80, buf, 1);
-	delayus(50);
+	delay(5);
 
 	buf[0] = 0x04;
 	i2c_write(0xe4, buf, 1);
-	delayus(50);
+	delay(5);
 
 	buf[0] = 0x00;
 	i2c_write(0xe0, buf, 1);
-	delayus(50);
+	delay(20);
 }
 
 void reset_chip()
@@ -118,7 +136,7 @@ void reset_chip()
 
 	buf[0] = 0x88;
     i2c_write(GSL_STATUS_REG, buf, 1);
-	delay(10);
+	delay(20);
 
 	buf[0] = 0x04;
     i2c_write(0xe4,buf, 1);
@@ -132,6 +150,7 @@ void reset_chip()
 	delay(10);
 }
 
+#ifndef BIGFLASH
 // the data is in blocks of 128 bytes, each one preceded by the page number
 // we first send the page number then we send the data in blocks of 32 until the entire page is sent
 // NOTE that the firmware data is stored in flash as it is huge! around 28kBytes
@@ -170,6 +189,28 @@ void load_fw(void)
 	}
 }
 
+#else
+
+void load_fw(void)
+{
+    uint8_t addr;
+    uint8_t Wrbuf[4];
+    uint source_line = 0;
+    uint source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
+
+
+    for (source_line = 0; source_line < source_len; source_line++) {
+        addr = GSLX680_FW[source_line].offset;
+        Wrbuf[0] = (char)(GSLX680_FW[source_line].val & 0x000000ff);
+        Wrbuf[1] = (char)((GSLX680_FW[source_line].val & 0x0000ff00) >> 8);
+        Wrbuf[2] = (char)((GSLX680_FW[source_line].val & 0x00ff0000) >> 16);
+        Wrbuf[3] = (char)((GSLX680_FW[source_line].val & 0xff000000) >> 24);
+
+        i2c_write(addr, Wrbuf, 4);
+    }
+}
+#endif
+
 void startup_chip(void)
 {
 	uint8_t buf[4];
@@ -183,11 +224,11 @@ void init_chip()
 #if 1
 	Serial.println("Toggle Wake");
 	digitalWrite(WAKE, HIGH);
-	delay(20);
+	delay(50);
 	digitalWrite(WAKE, LOW);
-	delay(20);
+	delay(50);
 	digitalWrite(WAKE, HIGH);
-	delay(20);
+	delay(30);
 
 	// CTP startup sequence
 	Serial.println("clr reg");
@@ -196,7 +237,7 @@ void init_chip()
 	reset_chip();
 	Serial.println("load_fw");
 	load_fw();
-//	startup_chip();
+	//startup_chip();
 	Serial.println("reset_chip2");
 	reset_chip();
 	Serial.println("startup_chip");
@@ -245,16 +286,25 @@ int read_data(void)
 void setup() {
 	Serial.begin(9600);
 	Serial.println("Starting");
+	pinMode(LED, OUTPUT);
 	pinMode(WAKE, OUTPUT);
 	digitalWrite(WAKE, LOW);
-	pinMode(INTRPT, INPUT);
+	pinMode(INTRPT, INPUT_PULLUP);
 	delay(100);
 	Wire.begin();
 	init_chip();
+
+#if 0
+	uint8_t buf[4];
+	int n= i2c_read(0xB0, buf, 4);
+	Serial.print(buf[0], HEX); Serial.print(","); Serial.print(buf[1], HEX); Serial.print(","); Serial.print(buf[2], HEX); Serial.print(","); Serial.println(buf[3], HEX);
+#endif
 }
 
 void loop() {
 	if(digitalRead(INTRPT) == HIGH) {
+		digitalWrite(LED, led);
+		led= !led;
 		int n= read_data();
 		for(int i=0; i<n; i++){
 			Serial.print(ts_event.coords[i].finger); Serial.print(" "), Serial.print(ts_event.coords[i].x); Serial.print(" "), Serial.print(ts_event.coords[i].y);
