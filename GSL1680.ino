@@ -23,6 +23,25 @@ pin | function  | Arduino Uno
 // set this for teensy3
 #define BIGFLASH
 
+#define GET_FAR_ADDRESS(var) \
+({ \
+uint_farptr_t tmp; \
+\
+__asm__ __volatile__( \
+\
+"ldi %A0, lo8(%1)" "\n\t" \
+"ldi %B0, hi8(%1)" "\n\t" \
+"ldi %C0, hh8(%1)" "\n\t" \
+"clr %D0" "\n\t" \
+: \
+"=d" (tmp) \
+: \
+"p" (&(var)) \
+); \
+tmp; \
+})
+
+
 // TODO define for other resolution
 #ifndef BIGFLASH
 #include "gslfw.h" // this is compacted format made by compress_data.c
@@ -190,13 +209,45 @@ void load_fw(void)
 }
 
 #else
-
 void load_fw(void)
+{
+    //uint8_t addr;
+    //uint8_t Wrbuf[4];
+    //uint8_t source_line = 0;
+    //uint8_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
+    
+    uint8_t addr;
+    uint8_t Wrbuf[4];
+    uint16_t source_line = 0;
+    uint16_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
+    Serial.print("Firmware line numbers "); Serial.println(source_len);
+
+source_len= 5508 - 30;
+
+    for (source_line = 0; source_line < source_len; source_line++) {
+      
+       addr = pgm_read_byte_far(GET_FAR_ADDRESS(GSLX680_FW[0].offset)+source_line*5);
+       
+       Wrbuf[0] = (char) (pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x000000ff);
+
+       Wrbuf[1] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x0000ff00) >> 8);
+       Wrbuf[2] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x00ff0000) >> 16);
+       Wrbuf[3] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0xff000000) >> 24);
+
+     
+
+        i2c_write(addr, Wrbuf, 4);
+
+
+    }
+}
+
+void load_fwX(void)
 {
     uint8_t addr;
     uint8_t Wrbuf[4];
-    uint source_line = 0;
-    uint source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
+    uint8_t source_line = 0;
+    uint8_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
 
 
     for (source_line = 0; source_line < source_len; source_line++) {
@@ -228,16 +279,22 @@ void init_chip()
 	digitalWrite(WAKE, LOW);
 	delay(50);
 	digitalWrite(WAKE, HIGH);
-	delay(30);
+	delay(10);
 
 	// CTP startup sequence
 	Serial.println("clr reg");
 	clr_reg();
+	delay(50);
+
 	Serial.println("reset_chip");
 	reset_chip();
+	delay(10);
+
 	Serial.println("load_fw");
 	load_fw();
-	//startup_chip();
+	delay(50);
+
+startup_chip();
 	Serial.println("reset_chip2");
 	reset_chip();
 	Serial.println("startup_chip");
@@ -290,7 +347,7 @@ void setup() {
 	pinMode(WAKE, OUTPUT);
 	digitalWrite(WAKE, LOW);
 	pinMode(INTRPT, INPUT_PULLUP);
-	delay(100);
+	delay(10);
 	Wire.begin();
 	init_chip();
 
@@ -303,8 +360,8 @@ void setup() {
 
 void loop() {
 	if(digitalRead(INTRPT) == HIGH) {
-		digitalWrite(LED, led);
-		led= !led;
+		//digitalWrite(LED, led);
+		//led= !led;
 		int n= read_data();
 		for(int i=0; i<n; i++){
 			Serial.print(ts_event.coords[i].finger); Serial.print(" "), Serial.print(ts_event.coords[i].x); Serial.print(" "), Serial.print(ts_event.coords[i].y);
@@ -312,5 +369,8 @@ void loop() {
 		}
 		Serial.println("---");
 	}
+
+//read_data();
+//delay(2000);
 }
 

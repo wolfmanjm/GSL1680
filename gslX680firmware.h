@@ -13,7 +13,7 @@ struct fw_data
 
 //#include <avr/pgmspace.h>
 
-const struct fw_data GSLX680_FW[] = {
+const struct fw_data GSLX680_FW[] PROGMEM = {
 //GSL_1680E+1688E+2681B+2682B_V1.3.4_2013.02.28
 {0xf0,0x3},
 {0x00,0xa5a5ffc0},
