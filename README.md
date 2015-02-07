@@ -1,9 +1,8 @@
 # GSL1680
-Arduino library for the GSL1680 touch panel controller
+Arduino library for the GSL1680 touch panel controller.
 
-Currently just a test sketch, hard coded for the 800x640 5" panel.
+Currently works for Arduino MEGA and hardcoded for 800x640 5" capacitive touch panel from BuyDisplay.
 
-The firmware file is big so it needed to be compressed to fit in an Uno flash memory.
+The firmware file is big so it needed to be compressed to fit in an Uno flash memory (currently not tested)
 
-Once tested and working I'll convert to a library, and have a #define for the two version of firmware
-for the 5" panels from buydisplay.com.
+Based on wolfmanjm/GSL1680 and discussions on: https://forum.pjrc.com/threads/26256-Has-anyone-tried-running-the-GSL16880-capacitive-touchscreen-controller-with-Teensy3
