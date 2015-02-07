@@ -1,4 +1,4 @@
-ifndef _GSLX680_H_
+#ifndef _GSLX680_H_
 #define _GSLX680_H_
 
 
@@ -5500,3 +5500,6 @@ struct fw_data
 {0x78,0x00000000},
 {0x7c,0x00000000},
 };
+
+
+#endif
