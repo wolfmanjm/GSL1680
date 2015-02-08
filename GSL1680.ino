@@ -2,13 +2,15 @@
 // driver for the GSL1680 touch panel
 // Information gleaned from https://github.com/rastersoft/gsl1680.git and various other sources
 // firmware for the specific panel was found here:- http://www.buydisplay.com/default/5-inch-tft-lcd-module-800x480-display-w-controller-i2c-serial-spi
-// Based on https://github.com/wolfmanjm/GSL1680. Modified by Helge Langehaug to work on Arduino MEGA
+// Based on https://github.com/wolfmanjm/GSL1680. 
+//
+// Modified by Helge Langehaug to work on Arduino MEGA, based on discussions in https://forum.pjrc.com/threads/26256-Has-anyone-tried-running-the-GSL16880-capacitive-touchscreen-controller-with-Teensy3
 
 /*
 Pin outs
 the FPC on the touch panel is six pins, pin 1 is to the left pin 6 to the right with the display facing up
 
-pin | function  | Arduino Mega | UNO
+pin | function  | Arduino Mega | (UNO)
 -----------------------------------
 1   | SCL       | SCL(21)      |  A5
 2   | SDA       | SDA(20)      |  A4
@@ -38,6 +40,7 @@ __asm__ __volatile__( \
 tmp; \
 })
 
+#define BIGFLASH
 
 #ifndef BIGFLASH
 #include "gslfw.h" // this is compacted format made by compress_data.c
@@ -208,37 +211,21 @@ void load_fw(void)
 void load_fw(void)
 {    
     uint8_t addr;
+    uint32_t val;
     uint8_t Wrbuf[4];
     uint16_t source_line = 0;
     uint16_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
-    Serial.print("Firmware line numbers "); Serial.println(source_len);
+    Serial.print("Firmware size: "); Serial.println(sizeof(GSLX680_FW));
+    Serial.print("Line numbers : "); Serial.println(source_len);
 
     for (source_line = 0; source_line < source_len; source_line++) {
        addr = pgm_read_byte_far(GET_FAR_ADDRESS(GSLX680_FW[0].offset)+source_line*5);
-       Wrbuf[0] = (char) (pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x000000ff);
-
-       Wrbuf[1] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x0000ff00) >> 8);
-       Wrbuf[2] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x00ff0000) >> 16);
-       Wrbuf[3] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0xff000000) >> 24);
+       val = pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5);
+       Wrbuf[0] = (char) (val) & 0x000000ff;
+       Wrbuf[1] = (char) ((val) & 0x0000ff00) >> 8;
+       Wrbuf[2] = (char) ((val) & 0x00ff0000) >> 16;
+       Wrbuf[3] = (char) ((val) & 0xff000000) >> 24;
        i2c_write(addr, Wrbuf, 4);
-    }
-}
-
-void load_fwX(void)
-{
-    uint8_t addr;
-    uint8_t Wrbuf[4];
-    uint8_t source_line = 0;
-    uint8_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
-
-    for (source_line = 0; source_line < source_len; source_line++) {
-        addr = GSLX680_FW[source_line].offset;
-        Wrbuf[0] = (char)(GSLX680_FW[source_line].val & 0x000000ff);
-        Wrbuf[1] = (char)((GSLX680_FW[source_line].val & 0x0000ff00) >> 8);
-        Wrbuf[2] = (char)((GSLX680_FW[source_line].val & 0x00ff0000) >> 16);
-        Wrbuf[3] = (char)((GSLX680_FW[source_line].val & 0xff000000) >> 24);
-
-        i2c_write(addr, Wrbuf, 4);
     }
 }
 #endif
