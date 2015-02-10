@@ -1,26 +1,28 @@
+// Original comments:
 // driver for the GSL1680 touch panel
 // Information gleaned from https://github.com/rastersoft/gsl1680.git and various other sources
 // firmware for the specific panel was found here:- http://www.buydisplay.com/default/5-inch-tft-lcd-module-800x480-display-w-controller-i2c-serial-spi
 // As was some test code.
 // This is for that 800X480 display and the 480x272 from buydisplay.com
+// ------
+// Modified by Helge Langehaug with help from https://forum.pjrc.com/threads/26256-Has-anyone-tried-running-the-GSL16880-capacitive-touchscreen-controller-with-Teensy3
 
 /*
 Pin outs
 the FPC on the touch panel is six pins, pin 1 is to the left pin 6 to the right with the display facing up
 
-pin | function  | Arduino Uno
------------------------------
-1   | SCL       | A5
-2   | SDA       | A4
-3   | VDD (3v3) | 3v3
-4   | Wake      | 4
-5   | Int       | 2
-6   | Gnd       | gnd
+pin | function  | Arduino Mega | Arduino Uno
+--------------------------------------------
+1   | SCL       | SCL(21)      | A5
+2   | SDA       | SDA(20)      | A4
+3   | VDD (3v3) | 3v3          | 3v3
+4   | Wake      | 4            | 4
+5   | Int       | 2            | 2
+6   | Gnd       | gnd          | gnd
 */
 #include <Wire.h>
 #include "Arduino.h"
 
-// set this for teensy3
 #define BIGFLASH
 
 #define GET_FAR_ADDRESS(var) \
@@ -210,19 +212,13 @@ void load_fw(void)
 
 #else
 void load_fw(void)
-{
-    //uint8_t addr;
-    //uint8_t Wrbuf[4];
-    //uint8_t source_line = 0;
-    //uint8_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
-    
+{    
     uint8_t addr;
     uint8_t Wrbuf[4];
     uint16_t source_line = 0;
     uint16_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
-    Serial.print("Firmware line numbers "); Serial.println(source_len);
-
-source_len= 5508 - 30;
+    Serial.print("Firmware size: "); Serial.println(sizeof(GSLX680_FW));
+    Serial.print("Line numbers : "); Serial.println(source_len);
 
     for (source_line = 0; source_line < source_len; source_line++) {
       
@@ -234,32 +230,10 @@ source_len= 5508 - 30;
        Wrbuf[2] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0x00ff0000) >> 16);
        Wrbuf[3] = (char) ((pgm_read_dword_far(GET_FAR_ADDRESS(GSLX680_FW[0].val)+source_line*5) & 0xff000000) >> 24);
 
-     
-
-        i2c_write(addr, Wrbuf, 4);
-
-
+       i2c_write(addr, Wrbuf, 4);
     }
 }
 
-void load_fwX(void)
-{
-    uint8_t addr;
-    uint8_t Wrbuf[4];
-    uint8_t source_line = 0;
-    uint8_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
-
-
-    for (source_line = 0; source_line < source_len; source_line++) {
-        addr = GSLX680_FW[source_line].offset;
-        Wrbuf[0] = (char)(GSLX680_FW[source_line].val & 0x000000ff);
-        Wrbuf[1] = (char)((GSLX680_FW[source_line].val & 0x0000ff00) >> 8);
-        Wrbuf[2] = (char)((GSLX680_FW[source_line].val & 0x00ff0000) >> 16);
-        Wrbuf[3] = (char)((GSLX680_FW[source_line].val & 0xff000000) >> 24);
-
-        i2c_write(addr, Wrbuf, 4);
-    }
-}
 #endif
 
 void startup_chip(void)
@@ -294,7 +268,7 @@ void init_chip()
 	load_fw();
 	delay(50);
 
-startup_chip();
+        startup_chip();
 	Serial.println("reset_chip2");
 	reset_chip();
 	Serial.println("startup_chip");
@@ -370,7 +344,5 @@ void loop() {
 		Serial.println("---");
 	}
 
-//read_data();
-//delay(2000);
 }
 
