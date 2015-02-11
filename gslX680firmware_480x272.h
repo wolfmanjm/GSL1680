@@ -2,18 +2,15 @@
 #define _GSLX680_H_
 
 
-#define SCREEN_MAX_X 		800
-#define SCREEN_MAX_Y 		480
+#define SCREEN_MAX_X 		480
+#define SCREEN_MAX_Y 		272
 
 struct fw_data
 {
-    uint8_t offset;
-    uint32_t val;
+    uchar offset;
+    ulong val;
 };
-
-//#include <avr/pgmspace.h>
-
-const struct fw_data GSLX680_FW[] PROGMEM = {
+ const struct fw_data  code GSLX680_FW[] = {
 //GSL_1680E+1688E+2681B+2682B_V1.3.4_2013.02.28
 {0xf0,0x3},
 {0x00,0xa5a5ffc0},
@@ -23,7 +20,7 @@ const struct fw_data GSLX680_FW[] PROGMEM = {
 {0x10,0xd7c56634},
 {0x14,0xe3505a2a},
 {0x18,0x514d494f},
-{0x1c,0xafebf471},
+{0x1c,0xafebf681},
 {0x20,0x00000000},
 {0x24,0x00000000},
 {0x28,0x00000000},
@@ -124,8 +121,8 @@ const struct fw_data GSLX680_FW[] PROGMEM = {
 {0x18,0x00000000},
 {0x1c,0x00000001},
 {0x20,0x00002904},
-{0x24,0x000001e0},
-{0x28,0x00000320},
+{0x24,0x00000110},
+{0x28,0x000001e0},
 {0x2c,0xf8010009},
 {0x30,0xf8010009},
 {0x34,0x00000004},
