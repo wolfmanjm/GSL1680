@@ -101,7 +101,7 @@ int main(int argc, char const *argv[])
 		}
 
 		if(GSLX680_FW[source_line].offset != offset) printf("Bad offset: %d - %d\n", GSLX680_FW[source_line].offset, offset);
-		memcpy(&packed[cnt], &GSLX680_FW[source_line].val, 4);
+		memcpy(&packed[cnt], &GSLX680_FW[source_line].val, 4); // NOTE this is forlittle endian hosts, bigendian will get them in the wrong order
 		cnt += 4;
 		n+=4;
 		offset+=4;

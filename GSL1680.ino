@@ -21,7 +21,7 @@ pin | function  | Arduino Uno
 #include "Arduino.h"
 
 // set this for teensy3
-#define BIGFLASH
+//#define BIGFLASH
 
 // TODO define for other resolution
 #ifndef BIGFLASH
@@ -173,7 +173,7 @@ void load_fw(void)
 
 		if(blockstart) {
 			blockstart= 0;
-			buf[0] = pgm_read_byte_near(gslx680_fw + source_line); // gslx680_fw[source_line];
+			buf[0] = pgm_read_byte_far(gslx680_fw + source_line); // gslx680_fw[source_line];
 			buf[1] = 0;
 			buf[2] = 0;
 			buf[3] = 0;
@@ -181,7 +181,7 @@ void load_fw(void)
 			reg= 0;
 
 		}else{
-			buf[off++] = pgm_read_byte_near(gslx680_fw + source_line); // gslx680_fw[source_line];
+			buf[off++] = pgm_read_byte_far(gslx680_fw + source_line); // gslx680_fw[source_line];
 		}
 	}
 	if(off == 32){ // write last accumulated block
@@ -195,8 +195,8 @@ void load_fw(void)
 {
     uint8_t addr;
     uint8_t Wrbuf[4];
-    uint source_line = 0;
-    uint source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
+    uint16_t source_line = 0;
+    uint16_t source_len = sizeof(GSLX680_FW) / sizeof(struct fw_data);
 
 
     for (source_line = 0; source_line < source_len; source_line++) {
@@ -229,6 +229,8 @@ void init_chip()
 	delay(50);
 	digitalWrite(WAKE, HIGH);
 	delay(30);
+
+	delay(500);
 
 	// CTP startup sequence
 	Serial.println("clr reg");
