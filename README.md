@@ -9,3 +9,5 @@ Once tested and working I'll convert to a library, and have a #define for the tw
 for the 5" panels from buydisplay.com.
 
 This has been made into an arduino library here https://github.com/ESTBLC/GSL1680
+
+Use 1.8.5
